@@ -143,7 +143,7 @@ NOTES:
  *   Rating: 1
  */
 int bitXor(int x, int y) {
-  return 2;
+  return ~(~(x&~y)&~(~x&y));
 }
 /* 
  * tmin - return minimum two's complement integer 
@@ -152,9 +152,7 @@ int bitXor(int x, int y) {
  *   Rating: 1
  */
 int tmin(void) {
-
-  return 2;
-
+  return 1<<31;
 }
 //2
 /*
@@ -165,7 +163,9 @@ int tmin(void) {
  *   Rating: 1
  */
 int isTmax(int x) {
-  return 2;
+  int y, z;
+  y = x+1, z = x^y;
+  return (!(~z))&!!(~x);
 }
 /* 
  * allOddBits - return 1 if all odd-numbered bits in word set to 1
@@ -176,7 +176,9 @@ int isTmax(int x) {
  *   Rating: 2
  */
 int allOddBits(int x) {
-  return 2;
+  int y;
+  y = (0xaa<<24)|(0xaa<<16)|(0xaa<<8)|0xaa;
+  return !((x&y)^y);
 }
 /* 
  * negate - return -x 
@@ -186,7 +188,7 @@ int allOddBits(int x) {
  *   Rating: 2
  */
 int negate(int x) {
-  return 2;
+  return ~x+1;
 }
 //3
 /* 
@@ -199,7 +201,7 @@ int negate(int x) {
  *   Rating: 3
  */
 int isAsciiDigit(int x) {
-  return 2;
+  return (!((x>>4)^0x3))&(!(((x+6)>>4)^0x3));
 }
 /* 
  * conditional - same as x ? y : z 
@@ -209,7 +211,9 @@ int isAsciiDigit(int x) {
  *   Rating: 3
  */
 int conditional(int x, int y, int z) {
-  return 2;
+  int w;
+  w = !!x<<31>>31;
+  return (w&y)|(~w&z);
 }
 /* 
  * isLessOrEqual - if x <= y  then return 1, else return 0 
@@ -219,7 +223,10 @@ int conditional(int x, int y, int z) {
  *   Rating: 3
  */
 int isLessOrEqual(int x, int y) {
-  return 2;
+  int sub, s1, s2, s3;
+  sub = y+(~x+1);
+  s1 = x>>31&1, s2 = y>>31&1, s3 = sub>>31&1;
+  return (s1&~s2)|(!(s1^s2)&(!s3));
 }
 //4
 /* 
@@ -231,7 +238,12 @@ int isLessOrEqual(int x, int y) {
  *   Rating: 4 
  */
 int logicalNeg(int x) {
-  return 2;
+  x = (x>>16)|x;
+  x = (x>>8)|x;
+  x = (x>>4)|x;
+  x = (x>>2)|x;
+  x = (x>>1)|x;
+  return (x&1)^1;
 }
 /* howManyBits - return the minimum number of bits required to represent x in
  *             two's complement
@@ -246,7 +258,21 @@ int logicalNeg(int x) {
  *  Rating: 4
  */
 int howManyBits(int x) {
-  return 0;
+  int sign, bit16, bit8, bit4, bit2, bit1, bit0;
+  sign = x>>31;
+  x = sign^x;
+  bit16 = !!(x>>16)<<4;
+  x = x>>bit16;
+  bit8 = !!(x>>8)<<3;
+  x = x>>bit8;
+  bit4 = !!(x>>4)<<2;
+  x = x>>bit4;
+  bit2 = !!(x>>2)<<1;
+  x = x>>bit2;
+  bit1 = !!(x>>1);
+  x = x>>bit1;
+  bit0 = x;
+  return bit16+bit8+bit4+bit2+bit1+bit0+1;
 }
 //float
 /* 
@@ -261,7 +287,9 @@ int howManyBits(int x) {
  *   Rating: 4
  */
 unsigned floatScale2(unsigned uf) {
-  return 2;
+  if((uf&0x7f800000) == 0)return ((uf&0x007fffff)<<1)|(uf&0xff800000);
+  else if((uf&0x7f800000) != 0x7f800000)return uf+0x00800000;
+  else return uf;
 }
 /* 
  * floatFloat2Int - Return bit-level equivalent of expression (int) f
@@ -276,7 +304,20 @@ unsigned floatScale2(unsigned uf) {
  *   Rating: 4
  */
 int floatFloat2Int(unsigned uf) {
-  return 2;
+  int sign, exp, frac, ans;
+  sign = uf>>31&1, exp = (uf>>23&0xff)-127, frac = uf&0x7fffff;
+  if(exp >= 32)return 0x80000000;
+  else if(exp >= 23){
+    ans = ((1<<23)+frac)<<(exp-23);
+    if(sign == 1)ans = ~ans+1;
+    return ans;
+  }
+  else if(exp >= 0){
+    ans = ((1<<23)+frac)>>(23-exp);
+    if(sign == 1)ans = ~ans+1;
+    return ans;
+  }
+  else return 0;
 }
 /* 
  * floatPower2 - Return bit-level equivalent of the expression 2.0^x
@@ -292,5 +333,8 @@ int floatFloat2Int(unsigned uf) {
  *   Rating: 4
  */
 unsigned floatPower2(int x) {
-    return 2;
+  if(x > 127)return 0xff<<23;
+  else if(x >= -126)return (x+127)<<23;
+  else if(x >= -149)return 1<<(x+149);
+  else return 0;
 }
